@@ -18,8 +18,8 @@ else
     echo "+=====================+"
     echo " "
 fi
-echo " "
-#--------- CALENDAR -------------------------------------------------------------
+# echo ""
+#--------- CALENDAR ------------------------------------------------------------
 tput sc
 i=0
 while [ $((++i)) -lt 10 ]; do tput cuu1; done
@@ -57,9 +57,9 @@ while IFS= read -r Cal; do
     CalLineCnt=$((++CalLineCnt))
 done < /tmp/terminal
 printf "\033[00m"
-echo ""
+# echo ""
 tput rc
-#--- TIME ---
+#--- TIME ----------------------------------------------------------------------
 tput sc
 i=0
 while [ $((++i)) -lt 9 ]; do tput cuu1; done
