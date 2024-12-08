@@ -6,8 +6,13 @@ meteo () {
     DateColumn=28
     TimeColumn=17
 
-    weather_output=$(curl https://wttr.in/YKF\?0F --silent --max-time 3)
+    weather_output=$(curl https://wttr.in/YKF\?0mf --silent --max-time 3)
     echo "$weather_output" > /tmp/now-weather
+
+# options (https://wttr.in/:help)
+        #  0  -> View: only current weather
+        #  m  -> Units: metric (SI) (default everywhere except US)
+    #  f  -> View: do not show the "Follow" line
 
     if [[ $weather_output == "Weather report:"* ]]; then
         WeatherSuccess=true
@@ -43,7 +48,9 @@ meteo () {
     tr -cd '\11\12\15\40\60-\136\140-\176' < /tmp/terminal1 > /tmp/terminal
 
     CalLineCnt=1
-    Today=$(date +%d)
+    Today=$(date +%e)  # %e instead of %d to avoid leading zero
+    Test=${Test// /}   # Remove spaces
+    TodayInt=$((10#$Today)) # Force Today to be an integer
 
     printf "\033[34m"
 
@@ -55,9 +62,10 @@ meteo () {
 
             for (( j = 0; j <= 18; j += 3 )); do
                 Test=${Cal[*]:$j:2}
+                TestInt=$((10#$Test)) # Force Test to be an integer
 
-                if [[ "$Test" == "$Today" ]] ; then
-                    printf "\033[0;32m\033[7m%s" "$Today"
+                if (( TestInt == TodayInt )) ; then # Integer Comparison
+                    printf "\033[0;32m\033[7m%2d" "$TodayInt" # Use %2d for consistent spacing
                     printf "\033[0m\033[34m"
                     tput cuf 1
                 else
@@ -96,3 +104,6 @@ meteo () {
 
     \rm -f /tmp/now-weather /tmp/terminal1 /tmp/terminal
 }
+
+# ^ 2023-05-18T13:07:04-0500\
+# % 2024-10-16T23:52:17-0400
