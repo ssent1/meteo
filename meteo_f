@@ -3,107 +3,95 @@
 meteo () {
     tput reset
 
-    DateColumn=28
-    TimeColumn=17
+    # Constants
+    readonly DATE_COLUMN=28
+    readonly TIME_COLUMN=17
 
-    weather_output=$(curl https://wttr.in/YKF\?0mf --silent --max-time 3)
-    echo "$weather_output" > /tmp/now-weather
+    # Display time first
+    tput cup 0 $TIME_COLUMN
+    printf "\033[0;32m\033[7m%s\033[0m" "$(date +"%H:%M")"
 
-# options (https://wttr.in/:help)
-        #  0  -> View: only current weather
-        #  m  -> Units: metric (SI) (default everywhere except US)
-    #  f  -> View: do not show the "Follow" line
+    # Store calendar output
+    cal_output=$(cal | sed 's/[[:space:]]*$//')  # Remove trailing spaces
+
+    # Print first line of calendar at time level
+    tput cup 0 $DATE_COLUMN
+    echo "$cal_output" | head -n 1 | while IFS= read -r line; do
+        printf "\033[34m%s\033[0m" "$line"
+    done
+
+    # Get weather data and print first line
+    weather_output=$(curl -s -m 3 "https://wttr.in/YKF?0mf")
+
+    # Start weather at line 1
+    tput cup 1 0
 
     if [[ $weather_output == "Weather report:"* ]]; then
-        WeatherSuccess=true
-        echo -e "\n $weather_output"
+        # Print first line of weather without newline
+        printf " %s" "$(echo "$weather_output" | head -n 1)"
+
+        # Print remaining weather lines
+        echo "$weather_output" | tail -n +2
+
+        # Print remaining calendar lines
+        tput cup 1 $DATE_COLUMN
+        echo "$cal_output" | tail -n +2 | while IFS= read -r line; do
+            if [[ $line =~ ^[[:space:]]*[0-9] ]]; then
+                # Process calendar number lines
+                today=$(date +%-d)
+
+                # Split and format numbers, excluding trailing zeros
+                echo "$line" | tr -s ' ' | sed 's/^ *//' | tr ' ' '\n' | \
+                while read -r num; do
+                    if [[ $num =~ ^[0-9]+$ ]]; then  # Only process valid numbers
+                        if [[ $num == $today ]]; then
+                            printf "\033[0;32m\033[7m%2d\033[0m\033[34m " "$num"
+                        else
+                            printf "\033[34m%2d " "$num"
+                        fi
+                    fi
+                done
+                echo
+            else
+                # Print header lines in blue
+                printf "\033[34m%s\033[0m\n" "$line"
+            fi
+            tput cuf $DATE_COLUMN
+        done
     else
-        WeatherSuccess=false
-        echo "+=====================+"
-        echo "|                     |"
-        echo "|                     |"
-        echo "| Weather Unavailable |"
-        echo "|                     |"
-        echo "|                     |"
-        echo "+=====================+"
-        echo " "
+        printf "+=====================+
+|                     |
+|                     |
+| Weather Unavailable |
+|                     |
+|                     |
++=====================+\n"
+
+        # Print remaining calendar lines after weather unavailable message
+        tput cup 1 $DATE_COLUMN
+        echo "$cal_output" | tail -n +2 | while IFS= read -r line; do
+            if [[ $line =~ ^[[:space:]]*[0-9] ]]; then
+                today=$(date +%-d)
+                echo "$line" | tr -s ' ' | sed 's/^ *//' | tr ' ' '\n' | \
+                while read -r num; do
+                    if [[ $num =~ ^[0-9]+$ ]]; then
+                        if [[ $num == $today ]]; then
+                            printf "\033[0;32m\033[7m%2d\033[0m\033[34m " "$num"
+                        else
+                            printf "\033[34m%2d " "$num"
+                        fi
+                    fi
+                done
+                echo
+            else
+                printf "\033[34m%s\033[0m\n" "$line"
+            fi
+            tput cuf $DATE_COLUMN
+        done
     fi
 
-    tput sc
-
-    i=0
-    while (( ++i < 10 )); do
-        tput cuu1
-    done
-
-    if [[ $WeatherSuccess == true ]]; then
-        Column=$(( DateColumn - 8 ))
-        tput cuf "$Column"
-        printf "          "
-    else
-        tput cuf "$DateColumn"
-    fi
-
-    cal > /tmp/terminal1
-    tr -cd '\11\12\15\40\60-\136\140-\176' < /tmp/terminal1 > /tmp/terminal
-
-    CalLineCnt=1
-    Today=$(date +%e)  # %e instead of %d to avoid leading zero
-    Test=${Test// /}   # Remove spaces
-    TodayInt=$((10#$Today)) # Force Today to be an integer
-
-    printf "\033[34m"
-
-    while IFS= read -r Cal; do
-        printf "%s" "$Cal"
-
-        if (( CalLineCnt > 2 )); then
-            tput cub 22
-
-            for (( j = 0; j <= 18; j += 3 )); do
-                Test=${Cal[*]:$j:2}
-                TestInt=$((10#$Test)) # Force Test to be an integer
-
-                if (( TestInt == TodayInt )) ; then # Integer Comparison
-                    printf "\033[0;32m\033[7m%2d" "$TodayInt" # Use %2d for consistent spacing
-                    printf "\033[0m\033[34m"
-                    tput cuf 1
-                else
-                    tput cuf 3
-                fi
-            done
-        fi
-
-        tput cud1
-        tput cuf "$DateColumn"
-        (( CalLineCnt++ ))
-    done < /tmp/terminal
-
-    printf "\033[00m"
-
-    tput rc
-
-    tput sc
-
-    i=0
-    while (( ++i < 9 )); do
-        tput cuu1
-    done
-
-    tput cuf "$TimeColumn"
-    date +"%H:%M" > /tmp/terminal
-
-    while IFS= read -r Time; do
-        printf "\033[0;32m\033[7m%s" "$Time"
-        tput cud1
-        tput cuf "$TimeColumn"
-    done < /tmp/terminal
-
-    tput rc
     printf "\n"
-
-    \rm -f /tmp/now-weather /tmp/terminal1 /tmp/terminal
 }
 
 # ^ 2023-05-18T13:07:04-0500\
-# % 2024-10-16T23:52:17-0400
+# % 2024-12-08T23:17:09-0500
